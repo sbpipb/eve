@@ -60,7 +60,9 @@ class registerSchema(object):
 
     @staticmethod
     def register_column(prop, schema, fields):
-        if len(prop.columns) > 1:
+        if hasattr(prop, 'collection_class'): # skip relationship fields
+            return
+        elif len(prop.columns) > 1:
             raise NotImplementedError  # TODO: Composite column property
         elif len(prop.columns) == 1:
             col = prop.columns[0]
