@@ -14,11 +14,10 @@ import ast
 import simplejson as json
 import flask.ext.sqlalchemy as flask_sqlalchemy
 from flask import abort
-from sqlalchemy.orm.exc import NoResultFound
 from datetime import datetime
 from copy import copy
 
-from eve.io.base import DataLayer, ConnectionException
+from eve.io.base import DataLayer, ConnectionException, BaseJSONEncoder
 from eve.utils import config, debug_error_message, str_to_date
 from .parser import parse, parse_dictionary, ParseError, sqla_op
 from .structures import SQLAResult, SQLAResultCollection
@@ -41,11 +40,19 @@ class SQLAJSONDecoder(json.JSONDecoder):
             return rv
 
 
+class SQLAJSONEncoder(BaseJSONEncoder):
+    def default(self, obj):
+        if hasattr(obj, 'jsonify'): # probably relationship
+            return obj.jsonify()
+        return super(SQLAJSONEncoder, self).default(obj)
+
+
 class SQL(DataLayer):
     """
     SQLAlchemy data access layer for Eve REST API.
     """
     json_decoder_cls = SQLAJSONDecoder
+    json_encoder_class = SQLAJSONEncoder
     driver = db
     serializers = {'datetime': str_to_date}
 
@@ -119,7 +126,11 @@ class SQL(DataLayer):
         model, args['spec'], fields, args['sort'] = self._datasource_ex(resource, [], client_projection, args['sort'])
         if req.where:
             try:
-                args['spec'] = self.combine_queries(args['spec'], parse(req.where, model))
+                try:
+                    spec = json.loads(req.where)
+                    args['spec'] = self.combine_queries(args['spec'], parse_dictionary(spec, model))
+                except (AttributeError, TypeError):
+                    args['spec'] = self.combine_queries(args['spec'], parse(req.where, model))
             except ParseError:
                 abort(400)
 
@@ -249,7 +260,6 @@ class SQL(DataLayer):
 
         model, filter_, fields_, sort_ = super(SQL, self)._datasource_ex(resource, query,
                                                                          client_projection, client_sort)
-
         if fields_.values()[0] == 0:
             fields = [field for field in model._eve_fields if field not in fields_]
         else:

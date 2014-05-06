@@ -51,7 +51,17 @@ class registerSchema(object):
             if prop.key in (config.LAST_UPDATED, config.DATE_CREATED):
                 continue
             schema = domain[resource]['schema'][prop.key] = {}
-            self.register_column(prop, schema, fields)
+
+            if hasattr(prop, 'collection_class'): # relationships
+                schema['type'] = 'dict'
+                schema['schema'] = {}
+                for c_prop in prop.mapper.iterate_properties:
+                    if c_prop.key in (config.LAST_UPDATED, config.DATE_CREATED):
+                        continue
+                    schema['schema'][c_prop.key] = {}
+                    self.register_column(c_prop, schema['schema'][c_prop.key], [])
+            else:
+               self.register_column(prop, schema, fields)
 
         cls_._eve_schema = domain
         cls_._eve_fields = fields
@@ -59,7 +69,7 @@ class registerSchema(object):
 
     @staticmethod
     def register_column(prop, schema, fields):
-        if hasattr(prop, 'collection_class'): # skip relationship fields
+        if hasattr(prop, 'collection_class'): # skip relationships
             return
         elif len(prop.columns) > 1:
             raise NotImplementedError  # TODO: Composite column property

@@ -12,7 +12,6 @@
 import collections
 import copy
 import flask.ext.sqlalchemy as flask_sqlalchemy
-from eve.utils import config
 
 object_mapper = flask_sqlalchemy.sqlalchemy.orm.object_mapper
 
