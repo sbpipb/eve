@@ -37,7 +37,8 @@ def parse_dictionary(filter_dict, model):
         return []
     conditions = []
     for k, v in filter_dict.iteritems():
-        conditions.append(sqla_op.eq(getattr(model, k), v))
+        #conditions.append(sqla_op.ilike(getattr(model, k), v))
+        conditions.append(getattr(model, k).ilike('%{0}%'.format(v)))
     return conditions
 
 
